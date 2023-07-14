@@ -1,23 +1,41 @@
 package creature
 
 import (
+	"image/color"
+	"math"
+
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 type CreatureInfo struct {
-	X           float64
-	Y           float64
-	TargetX     float64
-	TargetY     float64
-	Image       *ebiten.Image
-	Speed       float64
-	ElapsedTime float64
+	X               float64
+	Y               float64
+	TargetX         float64
+	TargetY         float64
+	Image           *ebiten.Image
+	Speed           float64
+	ElapsedTime     float64
+	FaceAngle       float64
+	shouldDisappear bool
 }
 
 var TARGET_W = 40.0
 var TARGET_H = 40.0
 
+var FaceImage = ebiten.NewImage(5, 5)
+
+func (ci *CreatureInfo) IsHidden() bool {
+	return ci.shouldDisappear
+}
+
+func (ci *CreatureInfo) Update() {
+
+}
+
 func (ci *CreatureInfo) Draw(screen *ebiten.Image) {
+	if ci.shouldDisappear {
+		return
+	}
 	op := &ebiten.DrawImageOptions{}
 	dw := ci.Image.Bounds().Size().X
 	dh := ci.Image.Bounds().Size().Y
@@ -28,7 +46,27 @@ func (ci *CreatureInfo) Draw(screen *ebiten.Image) {
 	scale := ebiten.DeviceScaleFactor()
 	op.GeoM.Scale(scale, scale)
 	op.Filter = ebiten.FilterLinear
+	opf := &ebiten.DrawImageOptions{}
+	opf.GeoM.Translate(math.Sin(ci.FaceAngle), math.Cos(ci.FaceAngle))
+	FaceImage.Fill(color.RGBA{189, 22, 64, 1})
+	ci.Image.DrawImage(FaceImage, &ebiten.DrawImageOptions{})
 	screen.DrawImage(ci.Image, op)
+}
+
+func (ci *CreatureInfo) Show() {
+	ci.shouldDisappear = false
+}
+
+func (ci *CreatureInfo) Hide() {
+	ci.shouldDisappear = true
+}
+
+func (ci *CreatureInfo) GetFaceAngle() float64 {
+	return ci.FaceAngle
+}
+
+func (ci *CreatureInfo) SetFaceAngle(angle float64) {
+	ci.FaceAngle = angle
 }
 
 func (ci *CreatureInfo) IncreaseElapsedTime(dt float64) {
@@ -49,6 +87,11 @@ func (ci *CreatureInfo) Move(x, y float64) {
 	if ci.Y < 0 {
 		ci.Y = 0
 	}
+}
+
+func (ci *CreatureInfo) MoveTo(x, y float64) {
+	ci.X = x
+	ci.Y = y
 }
 
 func (ci *CreatureInfo) GetImage() *ebiten.Image {

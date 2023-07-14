@@ -4,7 +4,9 @@ import (
 	"image/color"
 
 	"github.com/alivedise/tsuruki/interfaces"
+	"github.com/hajimehoshi/bitmapfont/v2"
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/text"
 )
 
 type Castbar struct {
@@ -33,8 +35,15 @@ func (cb *Castbar) Draw(c interfaces.Creature) {
 		if barWidth <= 0 {
 			return
 		}
-		bar := ebiten.NewImage(barWidth, 15)
-		bar.Fill(color.RGBA{4, 59, 92, 1})
+		bar := ebiten.NewImage(barWidth, 25)
+		clr := color.RGBA{4, 59, 92, 1}
+		if current.State().Is("precast") {
+			clr = color.RGBA{R: 255, G: 99, B: 71}
+		} else if current.State().Is("backwing") {
+			clr = color.RGBA{R: 238, G: 130, B: 238}
+		}
+		bar.Fill(clr)
 		c.GetInfo().GetImage().DrawImage(bar, op)
+		text.Draw(c.GetInfo().GetImage(), current.State().Get(), bitmapfont.Face, 8, 12, color.White)
 	}
 }

@@ -4,11 +4,25 @@ import "github.com/hajimehoshi/ebiten/v2"
 
 type World interface {
 	GetCreatureList() []Creature
+	GetEnemyList() []Creature
+	GetNearestCreature(Creature) Creature
+	GetFarthestCreature(Creature) Creature
+	GetHighestHateCreature(Creature) Creature
+	GetRangeInducer() Creature
+	GetMeleeInducer() Creature
+	Notify()
+	GetWidth() float64
+	GetHeight() float64
 }
 
 type SkillRotation interface {
-	Next() Skill
+	Next(Creature) Skill
 	Current() Skill
+	ShouldLoop() bool
+}
+
+type SkillConfig interface {
+	GetCastTime(key string) float64
 }
 
 type SkillState interface {
@@ -16,12 +30,14 @@ type SkillState interface {
 	Is(string) bool
 	Next(World, Creature)
 	Set(string)
+	Get() string
 	Update(World, Creature)
 }
 
 type SkillIndicator interface {
 	Draw(*ebiten.Image, Creature)
 	SetRectangleData(float64, float64, float64, float64)
+	SetSectorData(float64, float64, float64, float64, float64)
 	GetSkillSize() float64
 	Clear()
 }
@@ -32,9 +48,14 @@ type Castbar interface {
 
 type Creature interface {
 	GetRotation() SkillRotation
+	SetRotation(SkillRotation)
 	GetInfo() CreatureInfo
 	GetCastbar() Castbar
 	CastNext()
+	CastDone(Skill)
+	Draw(*ebiten.Image)
+	Update(World)
+	Notify(World)
 }
 
 type CreatureInfo interface {
@@ -45,16 +66,27 @@ type CreatureInfo interface {
 	GetTargetPosition() (float64, float64)
 	GetImage() *ebiten.Image
 	Move(float64, float64)
+	MoveTo(float64, float64)
+	Update()
 	Draw(*ebiten.Image)
 	IncreaseElapsedTime(float64)
 	ClearElapsedTime()
+	SetFaceAngle(float64)
+	GetFaceAngle() float64
+	Show()
+	Hide()
+	IsHidden() bool
 }
 
 type Skill interface {
 	EnterCast(g World, c Creature)
 	Execute(g World, c Creature)
 	State() SkillState
+	GetConfig() SkillConfig
 	Name() string
 	GetIndicator() SkillIndicator
-	TimeInfo() float64
+}
+
+type PlayerAI interface {
+	Detect(World, Creature)
 }

@@ -8,61 +8,24 @@ import (
 
 	"github.com/alivedise/tsuruki/interfaces"
 	"github.com/alivedise/tsuruki/point"
+	"github.com/alivedise/tsuruki/utils"
+	"github.com/fogleman/gg"
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
-
-func calculateSlope(p1, p2 point.Point) (float64, error) {
-	if p1.X == p2.X {
-		return 0, fmt.Errorf("无法计算斜率，两点的 x 值相同")
-	}
-
-	slope := (p2.Y - p1.Y) / (p2.X - p1.X)
-	return slope, nil
-}
-
-func CalculateRectanglePoints2(x, y, l, w, s float64) [5]point.Point {
-	radians := math.Pi * s / 180.0
-	halfLength := l / 2.0
-	halfWidth := w / 2.0
-
-	// 计算矩形的四个角点坐标
-	// 第一个角点（左上角）
-	x1 := x - halfLength*math.Cos(radians) + halfWidth*math.Sin(radians)
-	y1 := y - halfLength*math.Sin(radians) - halfWidth*math.Cos(radians)
-
-	// 第二个角点（右上角）
-	x2 := x + halfLength*math.Cos(radians) + halfWidth*math.Sin(radians)
-	y2 := y + halfLength*math.Sin(radians) - halfWidth*math.Cos(radians)
-
-	// 第三个角点（右下角）
-	x3 := x + halfLength*math.Cos(radians) - halfWidth*math.Sin(radians)
-	y3 := y + halfLength*math.Sin(radians) + halfWidth*math.Cos(radians)
-
-	// 第四个角点（左下角）
-	x4 := x - halfLength*math.Cos(radians) - halfWidth*math.Sin(radians)
-	y4 := y - halfLength*math.Sin(radians) + halfWidth*math.Cos(radians)
-
-	return [5]point.Point{{X: x1, Y: y1}, {X: x2, Y: y2}, {X: x3, Y: y3}, {X: x4, Y: y4}, {X: x, Y: y}}
-}
-
-func calculateRectanglePoints(start, end point.Point, width float64, height float64) [5]point.Point {
-	centerX := (start.X + end.X) / 2
-	centerY := (start.Y + end.Y) / 2
-
-	slope, _ := calculateSlope(start, end)
-	angle := math.Atan(slope) * 180 / math.Pi
-
-	return CalculateRectanglePoints2(centerX, centerY, height, width, angle)
-}
 
 type SkillIndicator struct {
 	image       *ebiten.Image
 	renderType  string
 	width       float64
 	height      float64
+	radius      float64
+	startAngle  float64
+	endAngle    float64
 	source      point.Point
 	destination point.Point
 	points      [5]point.Point
+	color       color.Color
 }
 
 func NewSkillIndicator(renderType string, width float64, height float64) *SkillIndicator {
@@ -84,19 +47,27 @@ func (si *SkillIndicator) SetRectangleData(x1, y1, x2, y2 float64) {
 	si.source = point.Point{X: x1, Y: y1}
 	si.destination = point.Point{X: x2, Y: y2}
 
-	si.points = calculateRectanglePoints(point.Point{X: si.source.X, Y: si.source.Y}, point.Point{X: si.destination.X, Y: si.destination.Y}, si.width, si.height)
+	si.points = utils.CalculateRectanglePoints(point.Point{X: si.source.X, Y: si.source.Y}, point.Point{X: si.destination.X, Y: si.destination.Y}, si.width, si.height)
+}
+
+func (si *SkillIndicator) SetSectorData(x, y, r, startAngle, endAngle float64) {
+	si.renderType = "sector"
+	si.source = point.Point{X: x, Y: y}
+	si.radius = r
+	si.startAngle = startAngle
+	si.endAngle = endAngle
 }
 
 func (si *SkillIndicator) Clear() {
-	si.source = point.Point{}
+	si.source = point.Point{X: -1000, Y: -1000}
 	si.destination = point.Point{}
 	si.points = [5]point.Point{}
+	si.startAngle = 0
+	si.endAngle = 0
+	si.radius = 0
 }
 
-func (si *SkillIndicator) Draw(screen *ebiten.Image, c interfaces.Creature) {
-	if si.source.X == 0 {
-		return
-	}
+func (si *SkillIndicator) DrawRectangle(screen *ebiten.Image, c interfaces.Creature) {
 	op := &ebiten.DrawTrianglesOptions{}
 	op.Address = ebiten.AddressUnsafe
 	scale := ebiten.DeviceScaleFactor()
@@ -111,4 +82,58 @@ func (si *SkillIndicator) Draw(screen *ebiten.Image, c interfaces.Creature) {
 		{DstX: float32(si.points[3].X * scale), DstY: float32(si.points[3].Y * scale), SrcX: 0, SrcY: 0, ColorR: 1, ColorG: 1, ColorB: 1, ColorA: 1},
 		{DstX: float32(si.points[4].X * scale), DstY: float32(si.points[4].Y * scale), SrcX: 0, SrcY: 0, ColorR: 1, ColorG: 1, ColorB: 1, ColorA: 1},
 	}, indices, si.image.SubImage(image.Rect(1, 1, 2, 2)).(*ebiten.Image), op)
+}
+
+func (si *SkillIndicator) DrawSector(screen *ebiten.Image, c interfaces.Creature) {
+	// TODO
+	op := &ebiten.DrawImageOptions{}
+	width := 250
+	height := 250
+	radius := 100.0
+	centerX, centerY := float64(width/2), float64(height/2)
+	dc := gg.NewContext(width, height)
+	startRad := gg.Radians(si.startAngle)
+	endRad := gg.Radians(si.endAngle)
+
+	// 绘制扇形
+	dc.MoveTo(centerX, centerY)
+	dc.LineTo(centerX+math.Cos(startRad)*radius, centerY+math.Sin(startRad)*radius)
+	dc.DrawArc(centerX, centerY, radius, startRad, endRad)
+	dc.LineTo(centerX, centerY)
+	if si.color != nil {
+		r, g, b, _ := si.color.RGBA()
+		dc.SetRGB(float64(r), float64(g), float64(b))
+	}
+	dc.SetRGB(55, 120, 0)
+	dc.FillPreserve()
+	dc.Stroke()
+
+	// 显示结果
+	dc.SavePNG("sector.png")
+	img, _, err := ebitenutil.NewImageFromFile("sector.png")
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	dw := img.Bounds().Size().X
+	dh := img.Bounds().Size().Y
+	op.GeoM.Translate(-float64(dw)/2, -float64(dh)/2)
+	op.GeoM.Rotate(-c.GetInfo().GetFaceAngle() + (135)*math.Pi/180)
+	op.GeoM.Translate(si.source.X, si.source.Y)
+	scale := ebiten.DeviceScaleFactor()
+	op.GeoM.Scale(scale, scale)
+	op.Filter = ebiten.FilterLinear
+	screen.DrawImage(img, op)
+}
+
+func (si *SkillIndicator) Draw(screen *ebiten.Image, c interfaces.Creature) {
+	current := c.GetRotation().Current().State()
+	if current.Is("precast") || current.Is("backwing") {
+		return
+	}
+	if si.renderType == "sector" {
+		si.DrawSector(screen, c)
+	} else {
+		si.DrawRectangle(screen, c)
+	}
 }

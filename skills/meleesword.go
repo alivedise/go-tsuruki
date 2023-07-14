@@ -7,18 +7,13 @@ import (
 )
 
 type MeleeSword struct {
-	SkillState *skill.SkillState
-	Indicator  *skill.SkillIndicator
+	SkillState  *skill.SkillState
+	Indicator   *skill.SkillIndicator
+	SkillConfig *skill.SkillConfig
 }
 
-func (s *MeleeSword) TimeInfo() float64 {
-	if s.State().Is("precast") {
-		return 1000.0
-	} else if s.State().Is("casting") {
-		return 1500.0
-	} else {
-		return 500.0
-	}
+func (s *MeleeSword) GetConfig() interfaces.SkillConfig {
+	return s.SkillConfig
 }
 
 func (s *MeleeSword) EnterCast(g interfaces.World, c interfaces.Creature) {
@@ -44,7 +39,6 @@ func (s *MeleeSword) EnterCast(g interfaces.World, c interfaces.Creature) {
 func (s *MeleeSword) Execute(g interfaces.World, c interfaces.Creature) {
 	c.GetInfo().SetTargetPosition(-1, -1)
 	s.State().Set("executed")
-	s.SkillState.State = "executed"
 	s.State().Next(g, c)
 }
 

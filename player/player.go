@@ -15,9 +15,10 @@ type Player struct {
 	CreatureInfo interfaces.CreatureInfo
 	Rotation     interfaces.SkillRotation
 	Castbar      interfaces.Castbar
+	ai           interfaces.PlayerAI
 }
 
-func NewPlayer(path string, x float64, y float64) *Player {
+func NewPlayer(path string, x float64, y float64, ai interfaces.PlayerAI) *Player {
 	img, _, err := ebitenutil.NewImageFromFile(path)
 	if err != nil {
 		fmt.Println(err)
@@ -31,9 +32,14 @@ func NewPlayer(path string, x float64, y float64) *Player {
 			Image: img,
 			X:     x,
 			Y:     y,
-			Speed: 2.0,
+			Speed: 0.1,
 		},
+		ai: ai,
 	}
+}
+
+func (c *Player) Notify(g interfaces.World) {
+	c.ai.Detect(g, c)
 }
 
 func (c *Player) GetInfo() interfaces.CreatureInfo {
@@ -41,7 +47,15 @@ func (c *Player) GetInfo() interfaces.CreatureInfo {
 }
 
 func (c *Player) CastNext() {
-	c.Rotation.Next()
+	c.Rotation.Next(c)
+}
+
+func (c *Player) SetRotation(s interfaces.SkillRotation) {
+
+}
+
+func (c *Player) CastDone(s interfaces.Skill) {
+
 }
 
 func (c *Player) GetCastbar() interfaces.Castbar {
@@ -50,6 +64,25 @@ func (c *Player) GetCastbar() interfaces.Castbar {
 
 func (c *Player) GetRotation() interfaces.SkillRotation {
 	return c.Rotation
+}
+
+func (c *Player) Update(g interfaces.World) {
+	if c.ai == nil {
+		return
+	}
+	c.ai.Detect(g, c)
+	x2, y2 := c.GetInfo().GetTargetPosition()
+	if x2 == 0 && y2 == 0 {
+		return
+	}
+	if x2 > 400 || y2 > 600 {
+		return
+	}
+
+	x1, y1 := c.GetInfo().GetPosition()
+	dx := x2 - x1
+	dy := y2 - y1
+	c.GetInfo().Move(dx*c.CreatureInfo.GetSpeed(), dy*c.CreatureInfo.GetSpeed())
 }
 
 func (c *Player) RandomMove() {
@@ -69,18 +102,11 @@ func (c *Player) Draw(screen *ebiten.Image) {
 
 func (c *Player) Move(dir input.Dir) {
 	vx, vy := dir.Vector()
-	c.GetInfo().Move(float64(vx), float64(vy))
+	c.GetInfo().Move(10*float64(vx), 10*float64(vy))
 }
 
 func (c *Player) Control(input *input.Input) {
 	if dir, ok := input.Dir(); ok {
 		c.Move(dir)
-	}
-}
-
-// Boss update; decide what action(skill) to do when being invoked
-func (c *Player) Update(g interfaces.World) {
-	if c.Rotation.Current() != nil {
-		//c.rotation.Current().State().Update(g, c)
 	}
 }

@@ -8,8 +8,9 @@ import (
 )
 
 type Rush struct {
-	SkillState *skill.SkillState
-	Indicator  *skill.SkillIndicator
+	SkillState  *skill.SkillState
+	Indicator   *skill.SkillIndicator
+	SkillConfig *skill.SkillConfig
 }
 
 func (s *Rush) State() interfaces.SkillState {
@@ -60,12 +61,6 @@ func (s *Rush) GetIndicator() interfaces.SkillIndicator {
 	return s.Indicator
 }
 
-func (s *Rush) TimeInfo() float64 {
-	if s.State().Is("precast") {
-		return 1000.0
-	} else if s.State().Is("casting") {
-		return 1500.0
-	} else {
-		return 500.0
-	}
+func (s *Rush) GetConfig() interfaces.SkillConfig {
+	return s.SkillConfig
 }
